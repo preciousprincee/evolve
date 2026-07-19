@@ -21,10 +21,6 @@ export default function Chat() {
   const textareaRef = useRef(null);
 
   useEffect(() => {
-    // Only fetch from the server if the store is empty — this covers the
-    // "just refreshed the page" case without re-fetching (and duplicating)
-    // when the user simply navigates away from Chat and back within the
-    // same session, since messages already live in the in-memory store then.
     if (messages.length > 0) {
       setIsLoadingHistory(false);
       return;
@@ -42,9 +38,7 @@ export default function Chat() {
           }))
         );
       })
-      .catch(() => {
-        // Non-fatal — chat still works for new messages even if history fails to load.
-      })
+      .catch(() => {})
       .finally(() => setIsLoadingHistory(false));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -53,9 +47,6 @@ export default function Chat() {
     scrollRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }, [messages]);
 
-  // Auto-grow the textarea as the user types, instead of a fixed single row —
-  // small detail, but it's what makes a text input feel considered rather
-  // than bare-bones.
   const handleInputChange = (e) => {
     setInput(e.target.value);
     const el = textareaRef.current;
@@ -85,8 +76,6 @@ export default function Chat() {
 
   return (
     <div className="flex flex-col h-[100dvh]">
-      {/* Sticky, blurred header so content fades under it on scroll instead
-          of clipping abruptly against a hard edge. */}
       <header className="sticky top-0 z-20 flex items-center gap-3 px-4 pt-[calc(env(safe-area-inset-top)+1.25rem)] pb-4 shrink-0 bg-void/70 backdrop-blur-glass border-b border-white/[0.06]">
         <button
           type="button"
@@ -105,8 +94,7 @@ export default function Chat() {
         </div>
       </header>
 
-      {/* pb-48 clears the fixed input bar AND the fixed tab bar sitting below it */}
-      <div className="flex-1 overflow-y-auto px-4 pt-4 pb-48 flex flex-col gap-2">
+      <div className="flex-1 overflow-y-auto px-4 pt-4 pb-44 flex flex-col gap-2">
         {!isLoadingHistory && messages.length === 0 && (
           <motion.div
             initial={{ opacity: 0 }}
@@ -137,11 +125,8 @@ export default function Chat() {
         <div ref={scrollRef} />
       </div>
 
-      {/* Sits well above the fixed BottomNav (~76px tall including its own
-          safe-area padding) rather than sharing its bottom:0 band — sharing
-          that band is what hides this input behind the nav bar. */}
-      <div className="fixed bottom-[76px] left-0 right-0 z-30 pointer-events-none">
-        <div className="bg-gradient-to-t from-void via-void/90 to-transparent pt-6 pb-2 px-4 pointer-events-auto">
+      <div className="fixed bottom-[0px] left-0 right-0 z-30 pointer-events-none">
+        <div className="bg-gradient-to-t from-void via-void/90 to-transparent pt-4 pb-1 px-4 pointer-events-auto">
           <form onSubmit={handleSubmit}>
             <div className="glass-panel-solid flex items-end gap-2 p-2 rounded-2xl transition-colors duration-200 focus-within:border-aurora-violet/50 focus-within:shadow-glow">
               <textarea
