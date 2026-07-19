@@ -30,7 +30,7 @@ export default defineConfig({
       workbox: {
         // App shell + static assets cached for offline install.
         globPatterns: ['**/*.{js,css,html,png,svg,woff2}'],
-        navigateFallback: '/offline.html',
+        navigateFallback: '/index.html',
         navigateFallbackDenylist: [/^\/api/],
         runtimeCaching: [
           {
