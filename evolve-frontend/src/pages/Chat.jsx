@@ -1,13 +1,15 @@
 import React from 'react';
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { MessageBubble } from '../components/MessageBubble.jsx';
 import { DateSeparator } from '../components/DateSeparator.jsx';
 import { AuroraOrb } from '../components/AuroraOrb.jsx';
 import { useChatStore } from '../stores/chatStore.js';
 import { useChat } from '../hooks/useChat.js';
 import { chatApi } from '../api/chatApi.js';
+
+const MAX_TEXTAREA_HEIGHT = 128; // px, matches max-h-32
 
 export default function Chat() {
   const navigate = useNavigate();
@@ -16,6 +18,7 @@ export default function Chat() {
   const [input, setInput] = useState('');
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
   const scrollRef = useRef(null);
+  const textareaRef = useRef(null);
 
   useEffect(() => {
     // Only fetch from the server if the store is empty — this covers the
@@ -50,11 +53,24 @@ export default function Chat() {
     scrollRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }, [messages]);
 
+  // Auto-grow the textarea as the user types, instead of a fixed single row —
+  // small detail, but it's what makes a text input feel considered rather
+  // than bare-bones.
+  const handleInputChange = (e) => {
+    setInput(e.target.value);
+    const el = textareaRef.current;
+    if (el) {
+      el.style.height = 'auto';
+      el.style.height = `${Math.min(el.scrollHeight, MAX_TEXTAREA_HEIGHT)}px`;
+    }
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!input.trim() || isSending) return;
     sendMessage(input);
     setInput('');
+    if (textareaRef.current) textareaRef.current.style.height = 'auto';
   };
 
   const handleBack = () => {
@@ -68,13 +84,15 @@ export default function Chat() {
   let lastDate = null;
 
   return (
-    <div className="flex flex-col h-screen">
-      <header className="flex items-center gap-3 px-4 pt-8 pb-4 shrink-0">
+    <div className="flex flex-col h-[100dvh]">
+      {/* Sticky, blurred header so content fades under it on scroll instead
+          of clipping abruptly against a hard edge. */}
+      <header className="sticky top-0 z-20 flex items-center gap-3 px-4 pt-[calc(env(safe-area-inset-top)+1.25rem)] pb-4 shrink-0 bg-void/70 backdrop-blur-glass border-b border-white/[0.06]">
         <button
           type="button"
           onClick={handleBack}
           aria-label="Back"
-          className="w-9 h-9 shrink-0 rounded-full flex items-center justify-center text-ink-muted hover:text-ink-primary hover:bg-white/[0.06] transition-colors -ml-1"
+          className="w-9 h-9 shrink-0 rounded-full flex items-center justify-center text-ink-muted hover:text-ink-primary hover:bg-white/[0.06] active:scale-90 transition-all -ml-1"
         >
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M15 18l-6-6 6-6" strokeLinecap="round" strokeLinejoin="round" />
@@ -87,13 +105,18 @@ export default function Chat() {
         </div>
       </header>
 
-      {/* pb-40 clears BOTH the fixed input bar and the fixed tab bar below it */}
-      <div className="flex-1 overflow-y-auto px-4 pb-40 flex flex-col gap-2">
+      {/* pb-48 clears the fixed input bar AND the fixed tab bar sitting below it */}
+      <div className="flex-1 overflow-y-auto px-4 pt-4 pb-48 flex flex-col gap-2">
         {!isLoadingHistory && messages.length === 0 && (
-          <div className="flex-1 flex flex-col items-center justify-center text-center gap-2 opacity-70">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.4 }}
+            className="flex-1 flex flex-col items-center justify-center text-center gap-2"
+          >
             <AuroraOrb size={64} />
             <p className="text-sm text-ink-muted mt-2">Say anything. I'm listening.</p>
-          </div>
+          </motion.div>
         )}
 
         <AnimatePresence initial={false}>
@@ -114,40 +137,42 @@ export default function Chat() {
         <div ref={scrollRef} />
       </div>
 
-      {/* Sits ABOVE the fixed BottomNav (which occupies roughly the bottom 76px,
-          including its own safe-area padding) rather than sharing the same
-          bottom:0 band — that overlap was hiding this input behind the nav bar. */}
-      <form
-        onSubmit={handleSubmit}
-        className="fixed bottom-[0px] left-0 right-0 z-30 px-4 pt-2 bg-gradient-to-t from-void via-void/95 to-transparent"
-      >
-        <div className="glass-panel-solid flex items-end gap-2 p-2 rounded-2xl">
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleSubmit(e);
-              }
-            }}
-            placeholder="Message Evolve…"
-            rows={1}
-            maxLength={4000}
-            className="flex-1 bg-transparent resize-none outline-none text-[15px] py-2 px-2 max-h-32 placeholder:text-ink-faint"
-          />
-          <button
-            type="submit"
-            disabled={!input.trim() || isSending}
-            aria-label="Send message"
-            className="w-10 h-10 shrink-0 rounded-full bg-aurora-gradient flex items-center justify-center disabled:opacity-30 transition-transform active:scale-90"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0B0E14" strokeWidth="2.2">
-              <path d="M5 12h14M13 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          </button>
+      {/* Sits well above the fixed BottomNav (~76px tall including its own
+          safe-area padding) rather than sharing its bottom:0 band — sharing
+          that band is what hides this input behind the nav bar. */}
+      <div className="fixed bottom-[76px] left-0 right-0 z-30 pointer-events-none">
+        <div className="bg-gradient-to-t from-void via-void/90 to-transparent pt-6 pb-2 px-4 pointer-events-auto">
+          <form onSubmit={handleSubmit}>
+            <div className="glass-panel-solid flex items-end gap-2 p-2 rounded-2xl transition-colors duration-200 focus-within:border-aurora-violet/50 focus-within:shadow-glow">
+              <textarea
+                ref={textareaRef}
+                value={input}
+                onChange={handleInputChange}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSubmit(e);
+                  }
+                }}
+                placeholder="Message Evolve…"
+                rows={1}
+                maxLength={4000}
+                className="flex-1 bg-transparent resize-none outline-none text-[15px] py-2 px-2 max-h-32 placeholder:text-ink-faint"
+              />
+              <button
+                type="submit"
+                disabled={!input.trim() || isSending}
+                aria-label="Send message"
+                className="w-10 h-10 shrink-0 rounded-full bg-aurora-gradient flex items-center justify-center disabled:opacity-30 transition-transform active:scale-90"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0B0E14" strokeWidth="2.2">
+                  <path d="M5 12h14M13 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+            </div>
+          </form>
         </div>
-      </form>
+      </div>
     </div>
   );
 }
