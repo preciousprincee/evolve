@@ -3,6 +3,21 @@ import { motion } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import { messageBubbleIn } from '../animations/variants.js';
 
+const dotTransition = (delay) => ({
+  y: [0, -4, 0],
+  transition: { duration: 0.9, repeat: Infinity, ease: 'easeInOut', delay },
+});
+
+function TypingDots() {
+  return (
+    <span className="inline-flex items-center gap-1 ml-1 align-middle" aria-hidden="true">
+      <motion.span className="w-1.5 h-1.5 rounded-full bg-current" animate={dotTransition(0)} />
+      <motion.span className="w-1.5 h-1.5 rounded-full bg-current" animate={dotTransition(0.15)} />
+      <motion.span className="w-1.5 h-1.5 rounded-full bg-current" animate={dotTransition(0.3)} />
+    </span>
+  );
+}
+
 export function MessageBubble({ role, content, isStreaming }) {
   const isUser = role === 'user';
 
@@ -23,9 +38,7 @@ export function MessageBubble({ role, content, isStreaming }) {
         <div className="prose prose-invert prose-sm max-w-none [&_p]:my-0 [&_p+p]:mt-2">
           <ReactMarkdown>{content || ' '}</ReactMarkdown>
         </div>
-        {isStreaming && (
-          <span className="inline-block w-1.5 h-4 bg-current ml-0.5 align-middle animate-pulse" aria-hidden="true" />
-        )}
+        {isStreaming && <TypingDots />}
       </div>
     </motion.div>
   );

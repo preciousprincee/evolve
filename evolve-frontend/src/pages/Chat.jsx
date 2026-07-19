@@ -1,5 +1,6 @@
 import React from 'react';
 import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import { MessageBubble } from '../components/MessageBubble.jsx';
 import { DateSeparator } from '../components/DateSeparator.jsx';
@@ -9,6 +10,7 @@ import { useChat } from '../hooks/useChat.js';
 import { chatApi } from '../api/chatApi.js';
 
 export default function Chat() {
+  const navigate = useNavigate();
   const { messages, isSending, error, setMessages } = useChatStore();
   const { sendMessage } = useChat();
   const [input, setInput] = useState('');
@@ -55,11 +57,29 @@ export default function Chat() {
     setInput('');
   };
 
+  const handleBack = () => {
+    if (window.history.state && window.history.state.idx > 0) {
+      navigate(-1);
+    } else {
+      navigate('/home');
+    }
+  };
+
   let lastDate = null;
 
   return (
     <div className="flex flex-col h-screen">
-      <header className="flex items-center gap-3 px-5 pt-8 pb-4 shrink-0">
+      <header className="flex items-center gap-3 px-4 pt-8 pb-4 shrink-0">
+        <button
+          type="button"
+          onClick={handleBack}
+          aria-label="Back"
+          className="w-9 h-9 shrink-0 rounded-full flex items-center justify-center text-ink-muted hover:text-ink-primary hover:bg-white/[0.06] transition-colors -ml-1"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M15 18l-6-6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </button>
         <AuroraOrb size={36} />
         <div>
           <h1 className="font-display text-lg leading-none">Evolve</h1>
@@ -99,7 +119,7 @@ export default function Chat() {
           bottom:0 band — that overlap was hiding this input behind the nav bar. */}
       <form
         onSubmit={handleSubmit}
-        className="fixed bottom-[76px] left-0 right-0 z-30 px-4 pt-2 bg-gradient-to-t from-void via-void/95 to-transparent"
+        className="fixed bottom-[0px] left-0 right-0 z-30 px-4 pt-2 bg-gradient-to-t from-void via-void/95 to-transparent"
       >
         <div className="glass-panel-solid flex items-end gap-2 p-2 rounded-2xl">
           <textarea

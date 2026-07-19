@@ -25,10 +25,11 @@ export default function App() {
 
         <Route element={<ProtectedRoute />}>
           <Route path="/onboarding" element={<Onboarding />} />
+          <Route path="/chat" element={<Chat />} />
 
           <Route element={<AppShell />}>
             <Route path="/home" element={<Home />} />
-            <Route path="/chat" element={<Chat />} />
+            
             <Route path="/timeline" element={<Timeline />} />
             <Route path="/profile" element={<Profile />} />
           </Route>
