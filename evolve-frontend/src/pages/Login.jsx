@@ -48,9 +48,9 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-6 py-0 mt-0">
-      <motion.div variants={fadeUp} initial="hidden" animate="visible" className="flex flex-col items-center mb-8 py-0">
-        <AuroraOrb size={96} className="" />
+    <div className="min-h-screen flex flex-col items-center justify-center px-6 py-10">
+      <motion.div variants={fadeUp} initial="hidden" animate="visible" className="flex flex-col items-center mb-8">
+        <AuroraOrb size={96} className="mb-6" />
         <h1 className="text-2xl font-display font-medium text-center">Evolve</h1>
         <p className="text-ink-muted text-sm mt-1 text-center">The AI Companion That Grows With You</p>
       </motion.div>

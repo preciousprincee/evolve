@@ -10,6 +10,25 @@ import { aiConfig } from '../config/ai.js';
 import { buildSystemPrompt } from '../prompts/companionPrompt.js';
 
 const HISTORY_LIMIT = 20;
+const HISTORY_PAGE_SIZE = 50;
+
+export const getHistory = asyncHandler(async (req, res) => {
+  // RLS-scoped read — a user can only ever see their own messages.
+  const { data, error } = await req.userClient
+    .from('messages')
+    .select('id, role, content, created_at')
+    .eq('user_id', req.userId)
+    .order('created_at', { ascending: false })
+    .limit(HISTORY_PAGE_SIZE);
+
+  if (error) {
+    logger.error({ event: 'chat_history_load_failed', userId: req.userId }, error.message);
+    return res.status(500).json({ error: { message: 'Failed to load conversation history.', code: 'HISTORY_LOAD_FAILED' } });
+  }
+
+  // Return oldest-first, ready to render top-to-bottom.
+  res.status(200).json({ messages: (data || []).reverse() });
+});
 
 export const sendMessage = asyncHandler(async (req, res) => {
   const { message } = req.body;

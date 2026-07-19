@@ -53,7 +53,7 @@ export default function Profile() {
   if (!data) return null;
 
   return (
-    <div className="min-h-screen pb-32 px-5 pt-0">
+    <div className="min-h-screen pb-32 px-5 pt-8">
       <motion.div variants={staggerChildren} initial="hidden" animate="visible" className="flex flex-col gap-4">
         <motion.div variants={fadeUp} className="flex flex-col items-center gap-3 mb-2">
           <AuroraOrb size={88} />

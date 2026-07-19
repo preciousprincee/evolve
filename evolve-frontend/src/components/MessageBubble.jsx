@@ -20,27 +20,11 @@ export function MessageBubble({ role, content, isStreaming }) {
             : 'glass-panel-solid text-ink-primary rounded-bl-md'
         }`}
       >
-        <ReactMarkdown>{content || ''}</ReactMarkdown>
-
+        <div className="prose prose-invert prose-sm max-w-none [&_p]:my-0 [&_p+p]:mt-2">
+          <ReactMarkdown>{content || ' '}</ReactMarkdown>
+        </div>
         {isStreaming && (
-          <span className="inline-flex items-center gap-1 ml-2 align-middle">
-            {[0, 1, 2].map((i) => (
-              <motion.span
-                key={i}
-                className="w-1.5 h-1.5 rounded-full bg-current"
-                animate={{
-                  opacity: [0.3, 1, 0.3],
-                  y: [0, -2, 0],
-                }}
-                transition={{
-                  duration: 0.8,
-                  repeat: Infinity,
-                  delay: i * 0.2,
-                  ease: 'easeInOut',
-                }}
-              />
-            ))}
-          </span>
+          <span className="inline-block w-1.5 h-4 bg-current ml-0.5 align-middle animate-pulse" aria-hidden="true" />
         )}
       </div>
     </motion.div>

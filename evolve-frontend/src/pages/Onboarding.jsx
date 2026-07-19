@@ -51,7 +51,7 @@ export default function Onboarding() {
             <div className="flex flex-col gap-3">
               <h2 className="text-lg font-display mb-1">What should I call you?</h2>
               <input className="input-field" placeholder="Your name" value={form.name} onChange={update('name')} />
-              <input className="input-field" placeholder="Nickname" value={form.nickname} onChange={update('nickname')} />
+              <input className="input-field" placeholder="Nickname (optional)" value={form.nickname} onChange={update('nickname')} />
             </div>
           )}
 

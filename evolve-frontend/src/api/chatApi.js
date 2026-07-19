@@ -1,4 +1,8 @@
-import { BACKEND_URL, getAuthHeader, ApiError } from '../services/apiClient.js';
+import { BACKEND_URL, getAuthHeader, ApiError, apiFetch } from '../services/apiClient.js';
+
+export const chatApi = {
+  getHistory: () => apiFetch('/api/chat/history'),
+};
 
 /**
  * Streams a chat response. We use fetch + a manual SSE line parser rather
