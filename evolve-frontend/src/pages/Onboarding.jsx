@@ -5,6 +5,7 @@ import { GlassCard } from '../components/GlassCard.jsx';
 import { Button } from '../components/Button.jsx';
 import { AuroraOrb } from '../components/AuroraOrb.jsx';
 import { profileApi } from '../api/profileApi.js';
+import { useProfileStore } from '../stores/profileStore.js';
 import { COMPANION_STYLES, LOVE_LANGUAGES } from '../constants/relationship.js';
 import { fadeUp } from '../animations/variants.js';
 
@@ -30,6 +31,7 @@ export default function Onboarding() {
     setError(null);
     try {
       await profileApi.updateMe({ ...form, onboarding_completed: true });
+      await useProfileStore.getState().refresh();
       navigate('/home');
     } catch (err) {
       setError(err.message);
