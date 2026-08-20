@@ -1,4 +1,3 @@
-import React from 'react';
 import { useEffect } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useUiStore } from '../stores/uiStore.js';

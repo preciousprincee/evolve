@@ -1,4 +1,3 @@
-import React from 'react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -30,7 +29,7 @@ export default function Onboarding() {
     setIsSaving(true);
     setError(null);
     try {
-      await profileApi.updateMe(form);
+      await profileApi.updateMe({ ...form, onboarding_completed: true });
       navigate('/home');
     } catch (err) {
       setError(err.message);

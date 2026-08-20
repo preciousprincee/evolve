@@ -12,6 +12,9 @@ const envSchema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(20),
   GROQ_API_KEY: z.string().min(10),
   CRON_SECRET: z.string().min(20),
+  // Optional in dev. Strongly recommended in production once running more
+  // than one instance — see redisClient.js / cache.js / rateLimiter.js.
+  REDIS_URL: z.string().url().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);

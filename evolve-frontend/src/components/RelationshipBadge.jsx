@@ -1,4 +1,3 @@
-import React from 'react';
 import { nextLevelInfo } from '../constants/relationship.js';
 
 export function RelationshipBadge({ level, xp }) {

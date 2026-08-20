@@ -14,6 +14,7 @@ import memoryRoutes from './routes/memory.routes.js';
 import creditsRoutes from './routes/credits.routes.js';
 import notificationsRoutes from './routes/notifications.routes.js';
 import cronRoutes from './routes/cron.routes.js';
+import adminRoutes from './routes/admin.routes.js';
 
 export const app = express();
 
@@ -88,6 +89,7 @@ app.use('/api/memories', memoryRoutes);
 app.use('/api/credits', creditsRoutes);
 app.use('/api/notifications', notificationsRoutes);
 app.use('/api/cron', cronRoutes);
+app.use('/api/admin', adminRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

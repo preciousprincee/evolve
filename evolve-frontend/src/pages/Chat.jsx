@@ -1,110 +1,154 @@
-import React from 'react';
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 import { MessageBubble } from '../components/MessageBubble.jsx';
 import { DateSeparator } from '../components/DateSeparator.jsx';
 import { AuroraOrb } from '../components/AuroraOrb.jsx';
 import { useChatStore } from '../stores/chatStore.js';
 import { useChat } from '../hooks/useChat.js';
-import { chatApi } from '../api/chatApi.js';
+import { useProfileStore } from '../stores/profileStore.js';
+import { fetchChatHistory } from '../api/chatApi.js';
+import { useVoice } from '../hooks/useVoice.js';
 
-const MAX_TEXTAREA_HEIGHT = 128; // px, matches max-h-32
+const AUTO_SPEAK_KEY = 'evolve-auto-speak';
 
 export default function Chat() {
-  const navigate = useNavigate();
   const { messages, isSending, error, setMessages } = useChatStore();
   const { sendMessage } = useChat();
   const [input, setInput] = useState('');
-  const [isLoadingHistory, setIsLoadingHistory] = useState(true);
+  const [romantic, setRomantic] = useState(false);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
+  const [autoSpeak, setAutoSpeak] = useState(() => localStorage.getItem(AUTO_SPEAK_KEY) === 'true');
   const scrollRef = useRef(null);
-  const textareaRef = useRef(null);
-
-  useEffect(() => {
-    if (messages.length > 0) {
-      setIsLoadingHistory(false);
-      return;
-    }
-
-    chatApi
-      .getHistory()
-      .then(({ messages: history }) => {
-        setMessages(
-          history.map((m) => ({
-            id: m.id,
-            role: m.role,
-            content: m.content,
-            createdAt: m.created_at,
-          }))
-        );
-      })
-      .catch(() => {})
-      .finally(() => setIsLoadingHistory(false));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const lastSpokenIdRef = useRef(null);
+  const {
+    isListening,
+    isSpeaking,
+    speechRecognitionSupported,
+    speechSynthesisSupported,
+    startListening,
+    stopListening,
+    speak,
+    cancelSpeech,
+  } = useVoice();
 
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }, [messages]);
 
-  const handleInputChange = (e) => {
-    setInput(e.target.value);
-    const el = textareaRef.current;
-    if (el) {
-      el.style.height = 'auto';
-      el.style.height = `${Math.min(el.scrollHeight, MAX_TEXTAREA_HEIGHT)}px`;
+  useEffect(() => {
+    // Only load history once per app session — if messages are already in
+    // the store (e.g. navigated away and back without a full refresh),
+    // don't clobber them with a re-fetch.
+    if (messages.length > 0) {
+      setHistoryLoaded(true);
+      return;
     }
-  };
+    fetchChatHistory({ limit: 50 })
+      .then((res) => {
+        setMessages(
+          (res.messages || []).map((m) => ({ id: m.id, role: m.role, content: m.content, createdAt: m.created_at }))
+        );
+      })
+      .catch(() => {})
+      .finally(() => setHistoryLoaded(true));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    // Reflects the shared store's current value — Profile.jsx calls
+    // store.refresh() after a toggle, so this naturally picks up changes
+    // without a second independent fetch here.
+    useProfileStore.getState().fetch().then((res) => {
+      setRomantic(Boolean(res?.profile?.romantic_mode_enabled));
+    }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem(AUTO_SPEAK_KEY, String(autoSpeak));
+    if (!autoSpeak) cancelSpeech();
+  }, [autoSpeak, cancelSpeech]);
+
+  useEffect(() => {
+    if (!autoSpeak || !speechSynthesisSupported) return;
+    const last = messages[messages.length - 1];
+    if (!last || last.role !== 'assistant' || last.isStreaming) return;
+    if (lastSpokenIdRef.current === last.id) return;
+    lastSpokenIdRef.current = last.id;
+    speak(last.content, { romantic });
+  }, [messages, autoSpeak, speechSynthesisSupported, romantic, speak]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!input.trim() || isSending) return;
+    cancelSpeech(); // don't talk over the next message going out
     sendMessage(input);
     setInput('');
-    if (textareaRef.current) textareaRef.current.style.height = 'auto';
   };
 
-  const handleBack = () => {
-    if (window.history.state && window.history.state.idx > 0) {
-      navigate(-1);
-    } else {
-      navigate('/home');
+  const toggleListening = () => {
+    if (isListening) {
+      stopListening();
+      return;
     }
+    cancelSpeech();
+    startListening((transcript) => setInput(transcript));
   };
 
   let lastDate = null;
 
   return (
-    <div className="flex flex-col h-[100dvh]">
-      <header className="sticky top-0 z-20 flex items-center gap-3 px-4 pt-[calc(env(safe-area-inset-top)+1.25rem)] pb-4 shrink-0 bg-void/70 backdrop-blur-glass border-b border-white/[0.06]">
-        <button
-          type="button"
-          onClick={handleBack}
-          aria-label="Back"
-          className="w-9 h-9 shrink-0 rounded-full flex items-center justify-center text-ink-muted hover:text-ink-primary hover:bg-white/[0.06] active:scale-90 transition-all -ml-1"
-        >
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M15 18l-6-6 6-6" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </button>
-        <AuroraOrb size={36} />
+    <div className="flex flex-col h-screen pb-40">
+      <header className="flex items-center gap-3 px-5 pt-8 pb-4 shrink-0">
+        <AuroraOrb size={36} romantic={romantic} />
         <div>
-          <h1 className="font-display text-lg leading-none">Evolve</h1>
+          <h1 className="font-display text-lg leading-none flex items-center gap-1.5">
+            Evolve
+            {romantic && (
+              <span className="text-[10px] font-body font-medium text-aurora-rose bg-aurora-rose/10 border border-aurora-rose/30 rounded-full px-2 py-0.5">
+                Romantic Mode
+              </span>
+            )}
+          </h1>
           <p className="text-xs text-ink-faint mt-0.5">{isSending ? 'thinking…' : 'here with you'}</p>
         </div>
+        {speechSynthesisSupported && (
+          <button
+            type="button"
+            onClick={() => setAutoSpeak((v) => !v)}
+            aria-label={autoSpeak ? 'Turn off spoken replies' : 'Turn on spoken replies'}
+            aria-pressed={autoSpeak}
+            className={`ml-auto w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-colors ${
+              autoSpeak ? (romantic ? 'bg-aurora-rose/20 text-aurora-rose' : 'bg-aurora-violet/20 text-aurora-violet') : 'text-ink-faint'
+            }`}
+          >
+            {autoSpeak ? (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M11 5 6 9H3v6h3l5 4V5Z" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M15.5 8.5a5 5 0 0 1 0 7" strokeLinecap="round" />
+                <path d="M18 6a9 9 0 0 1 0 12" strokeLinecap="round" />
+              </svg>
+            ) : (
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M11 5 6 9H3v6h3l5 4V5Z" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="m17 9 4 6M21 9l-4 6" strokeLinecap="round" />
+              </svg>
+            )}
+          </button>
+        )}
       </header>
 
-      <div className="flex-1 overflow-y-auto px-4 pt-4 pb-44 flex flex-col gap-2">
-        {!isLoadingHistory && messages.length === 0 && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.4 }}
-            className="flex-1 flex flex-col items-center justify-center text-center gap-2"
-          >
-            <AuroraOrb size={64} />
+      <div className="flex-1 overflow-y-auto px-4 flex flex-col gap-2">
+        {historyLoaded && messages.length === 0 && (
+          <div className="flex-1 flex flex-col items-center justify-center text-center gap-2 opacity-70">
+            <AuroraOrb size={64} romantic={romantic} />
             <p className="text-sm text-ink-muted mt-2">Say anything. I'm listening.</p>
-          </motion.div>
+          </div>
+        )}
+
+        {!historyLoaded && (
+          <div className="flex-1 flex items-center justify-center">
+            <AuroraOrb size={48} romantic={romantic} />
+          </div>
         )}
 
         <AnimatePresence initial={false}>
@@ -115,7 +159,7 @@ export default function Chat() {
             return (
               <div key={m.id}>
                 {showSeparator && <DateSeparator date={m.createdAt} />}
-                <MessageBubble role={m.role} content={m.content} isStreaming={m.isStreaming} />
+                <MessageBubble role={m.role} content={m.content} isStreaming={m.isStreaming} romantic={romantic} />
               </div>
             );
           })}
@@ -125,39 +169,52 @@ export default function Chat() {
         <div ref={scrollRef} />
       </div>
 
-      <div className="fixed bottom-[0px] left-0 right-0 z-30 pointer-events-none">
-        <div className="bg-gradient-to-t from-void via-void/90 to-transparent pt-4 pb-1 px-4 pointer-events-auto">
-          <form onSubmit={handleSubmit}>
-            <div className="glass-panel-solid flex items-end gap-2 p-2 rounded-2xl transition-colors duration-200 focus-within:border-aurora-violet/50 focus-within:shadow-glow">
-              <textarea
-                ref={textareaRef}
-                value={input}
-                onChange={handleInputChange}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSubmit(e);
-                  }
-                }}
-                placeholder="Message Evolve…"
-                rows={1}
-                maxLength={4000}
-                className="flex-1 bg-transparent resize-none outline-none text-[15px] py-2 px-2 max-h-32 placeholder:text-ink-faint"
-              />
-              <button
-                type="submit"
-                disabled={!input.trim() || isSending}
-                aria-label="Send message"
-                className="w-10 h-10 shrink-0 rounded-full bg-aurora-gradient flex items-center justify-center disabled:opacity-30 transition-transform active:scale-90"
-              >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0B0E14" strokeWidth="2.2">
-                  <path d="M5 12h14M13 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              </button>
-            </div>
-          </form>
+      <form onSubmit={handleSubmit} className="fixed left-0 right-0 z-30 px-4 pt-2 bg-gradient-to-t from-void via-void/95 to-transparent" style={{ bottom: 'calc(88px + env(safe-area-inset-bottom))' }}>
+        <div className="glass-panel-solid flex items-end gap-2 p-2 rounded-2xl">
+          {speechRecognitionSupported && (
+            <button
+              type="button"
+              onClick={toggleListening}
+              aria-label={isListening ? 'Stop voice input' : 'Speak your message'}
+              aria-pressed={isListening}
+              className={`w-10 h-10 shrink-0 rounded-full flex items-center justify-center transition-colors ${
+                isListening
+                  ? 'bg-aurora-rose text-void animate-pulse'
+                  : 'text-ink-muted hover:text-ink-primary'
+              }`}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <rect x="9" y="3" width="6" height="11" rx="3" />
+                <path d="M5 11a7 7 0 0 0 14 0M12 18v3" strokeLinecap="round" />
+              </svg>
+            </button>
+          )}
+          <textarea
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSubmit(e);
+              }
+            }}
+            placeholder={isListening ? 'Listening…' : 'Message Evolve…'}
+            rows={1}
+            maxLength={4000}
+            className="flex-1 bg-transparent resize-none outline-none text-[15px] py-2 px-2 max-h-32 placeholder:text-ink-faint"
+          />
+          <button
+            type="submit"
+            disabled={!input.trim() || isSending}
+            aria-label="Send message"
+            className={`w-10 h-10 shrink-0 rounded-full flex items-center justify-center disabled:opacity-30 transition-transform active:scale-90 ${romantic ? 'bg-romantic-gradient' : 'bg-aurora-gradient'}`}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#0B0E14" strokeWidth="2.2">
+              <path d="M5 12h14M13 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
         </div>
-      </div>
+      </form>
     </div>
   );
 }

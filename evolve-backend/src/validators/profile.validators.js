@@ -17,6 +17,9 @@ export const updateProfileSchema = z
       .optional(),
     companion_style: z.enum(['supportive', 'motivational', 'playful', 'calm', 'direct']).optional(),
     current_mood: z.string().trim().max(30).optional(),
+    // Adult-only — enforced in profileService.updateProfile, not just here.
+    romantic_mode_enabled: z.boolean().optional(),
+    onboarding_completed: z.boolean().optional(),
   })
   .strict() // reject unknown fields outright rather than silently dropping them
   .refine((obj) => Object.keys(obj).length > 0, { message: 'At least one field is required.' });

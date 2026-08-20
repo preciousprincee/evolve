@@ -1,6 +1,6 @@
-import React from 'react';
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
+import { Link } from 'react-router-dom';
 import { GlassCard } from '../components/GlassCard.jsx';
 import { Button } from '../components/Button.jsx';
 import { RelationshipBadge } from '../components/RelationshipBadge.jsx';
@@ -8,6 +8,7 @@ import { AuroraOrb } from '../components/AuroraOrb.jsx';
 import { profileApi } from '../api/profileApi.js';
 import { memoryApi } from '../api/memoryApi.js';
 import { useAuthStore } from '../stores/authStore.js';
+import { useProfileStore } from '../stores/profileStore.js';
 import { COMPANION_STYLES, LOVE_LANGUAGES } from '../constants/relationship.js';
 import { fadeUp, staggerChildren } from '../animations/variants.js';
 
@@ -18,15 +19,26 @@ export default function Profile() {
   const [editing, setEditing] = useState(false);
   const [form, setForm] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [romanticSaving, setRomanticSaving] = useState(false);
+  const [romanticError, setRomanticError] = useState('');
 
   const load = async () => {
     const [profileRes, achievementsRes] = await Promise.all([
-      profileApi.getMe(),
+      useProfileStore.getState().fetch(),
       memoryApi.list('achievement'),
     ]);
     setData(profileRes);
     setForm(profileRes.profile);
     setAchievements(achievementsRes.memories || []);
+  };
+
+  // After any write, force the shared store to refetch — this is what
+  // keeps Chat/Home in sync with changes made here without them each
+  // polling independently.
+  const reloadAfterWrite = async () => {
+    const profileRes = await useProfileStore.getState().refresh();
+    setData(profileRes);
+    setForm(profileRes.profile);
   };
 
   useEffect(() => {
@@ -38,15 +50,49 @@ export default function Profile() {
     try {
       await profileApi.updateMe({
         nickname: form.nickname || undefined,
+        age: form.age || undefined,
         career: form.career || undefined,
         companion_style: form.companion_style,
         love_language: form.love_language,
         current_mood: form.current_mood || undefined,
       });
-      await load();
+      await reloadAfterWrite();
       setEditing(false);
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const hasAge = data?.profile?.age !== null && data?.profile?.age !== undefined;
+  const isAdult = Number(data?.profile?.age) >= 18;
+
+  const toggleRomanticMode = async () => {
+    setRomanticError('');
+
+    // Not eligible yet — surface a message instead of silently doing
+    // nothing. This is purely informational UX; the actual restriction
+    // is enforced server-side regardless of what happens here.
+    if (!isAdult) {
+      setRomanticError(
+        hasAge
+          ? 'Romantic Mode is only available to users 18 and older.'
+          : 'Add your age to your profile to enable Romantic Mode.'
+      );
+      return;
+    }
+
+    setRomanticSaving(true);
+    try {
+      await profileApi.updateMe({ romantic_mode_enabled: !data.profile.romantic_mode_enabled });
+      await reloadAfterWrite();
+    } catch (err) {
+      setRomanticError(
+        err?.code === 'ROMANTIC_MODE_AGE_RESTRICTED'
+          ? 'Romantic Mode is only available to users 18 and older.'
+          : 'Could not update Romantic Mode. Please try again.'
+      );
+    } finally {
+      setRomanticSaving(false);
     }
   };
 
@@ -87,6 +133,7 @@ export default function Profile() {
 
             {!editing ? (
               <div className="flex flex-col gap-2 text-sm text-ink-muted">
+                <p><span className="text-ink-faint">Age:</span> {data.profile.age ?? '—'}</p>
                 <p><span className="text-ink-faint">Career:</span> {data.profile.career || '—'}</p>
                 <p><span className="text-ink-faint">Companion style:</span> {COMPANION_STYLES.find((s) => s.value === data.profile.companion_style)?.label || '—'}</p>
                 <p><span className="text-ink-faint">Love language:</span> {LOVE_LANGUAGES.find((l) => l.value === data.profile.love_language)?.label || '—'}</p>
@@ -95,6 +142,7 @@ export default function Profile() {
             ) : (
               <div className="flex flex-col gap-2">
                 <input className="input-field" placeholder="Nickname" value={form.nickname || ''} onChange={(e) => setForm({ ...form, nickname: e.target.value })} />
+                <input className="input-field" type="number" min="13" max="120" placeholder="Age" value={form.age ?? ''} onChange={(e) => setForm({ ...form, age: e.target.value ? Number(e.target.value) : undefined })} />
                 <input className="input-field" placeholder="Career" value={form.career || ''} onChange={(e) => setForm({ ...form, career: e.target.value })} />
                 <select className="input-field" value={form.companion_style || ''} onChange={(e) => setForm({ ...form, companion_style: e.target.value })}>
                   {COMPANION_STYLES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
@@ -104,6 +152,50 @@ export default function Profile() {
                 </select>
                 <input className="input-field" placeholder="Current mood" value={form.current_mood || ''} onChange={(e) => setForm({ ...form, current_mood: e.target.value })} />
                 <Button onClick={save} disabled={isSaving} className="mt-1">{isSaving ? 'Saving…' : 'Save'}</Button>
+              </div>
+            )}
+          </GlassCard>
+        </motion.div>
+
+        <motion.div variants={fadeUp}>
+          <GlassCard>
+            <div className="flex justify-between items-center gap-3">
+              <div>
+                <p className="text-sm font-medium flex items-center gap-1.5">
+                  <span className="text-aurora-rose">♥</span> Romantic Mode
+                </p>
+                <p className="text-xs text-ink-faint mt-1 max-w-[80%]">
+                  A warmer, more affectionate tone in chat.
+                </p>
+              </div>
+              <button
+                role="switch"
+                aria-checked={Boolean(data.profile.romantic_mode_enabled)}
+                aria-label="Toggle Romantic Mode"
+                disabled={romanticSaving}
+                onClick={toggleRomanticMode}
+                className={`w-12 h-7 shrink-0 rounded-full transition-colors relative disabled:cursor-wait ${
+                  isAdult ? '' : 'opacity-40'
+                } ${data.profile.romantic_mode_enabled ? 'bg-romantic-gradient' : 'bg-white/10'}`}
+              >
+                <span
+                  className={`absolute left-1 top-1 w-5 h-5 rounded-full bg-white shadow-glass transition-transform duration-200 ${
+                    data.profile.romantic_mode_enabled ? 'translate-x-5' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+            {romanticError && (
+              <div className="mt-3 text-xs text-ink-primary bg-aurora-rose/10 border border-aurora-rose/30 rounded-xl px-3 py-2 flex items-center justify-between gap-2">
+                <span>{romanticError}</span>
+                {!hasAge && (
+                  <button
+                    onClick={() => { setRomanticError(''); setEditing(true); }}
+                    className="text-aurora-rose font-medium shrink-0 underline underline-offset-2"
+                  >
+                    Add age
+                  </button>
+                )}
               </div>
             )}
           </GlassCard>
@@ -123,6 +215,14 @@ export default function Profile() {
         )}
 
         <motion.div variants={fadeUp}>
+          {data.profile.role === 'admin' && (
+            <motion.div variants={fadeUp}>
+              <Link to="/admin/users">
+                <Button variant="ghost" className="w-full">Admin dashboard</Button>
+              </Link>
+            </motion.div>
+          )}
+
           <Button variant="ghost" onClick={signOut} className="w-full">
             Sign out
           </Button>

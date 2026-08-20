@@ -1,4 +1,3 @@
-import React from 'react';
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -6,8 +5,8 @@ import { GlassCard } from '../components/GlassCard.jsx';
 import { AuroraOrb } from '../components/AuroraOrb.jsx';
 import { RelationshipBadge } from '../components/RelationshipBadge.jsx';
 import { Button } from '../components/Button.jsx';
-import { profileApi } from '../api/profileApi.js';
 import { memoryApi } from '../api/memoryApi.js';
+import { useProfileStore } from '../stores/profileStore.js';
 import { fadeUp, staggerChildren } from '../animations/variants.js';
 
 const QUOTES = [
@@ -36,7 +35,7 @@ export default function Home() {
   useEffect(() => {
     (async () => {
       try {
-        const [profileRes, memoriesRes] = await Promise.all([profileApi.getMe(), memoryApi.list()]);
+        const [profileRes, memoriesRes] = await Promise.all([useProfileStore.getState().fetch(), memoryApi.list()]);
         setData(profileRes);
         setRecentMemory(memoriesRes.memories?.[0] ?? null);
       } catch {

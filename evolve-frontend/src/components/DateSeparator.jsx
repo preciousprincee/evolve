@@ -1,4 +1,3 @@
-import React from 'react';
 function formatDateLabel(dateStr) {
   const date = new Date(dateStr);
   const today = new Date();

@@ -1,4 +1,3 @@
-import React from 'react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -14,6 +13,7 @@ export default function Login() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [resetSent, setResetSent] = useState(false);
+  const [confirmEmailSent, setConfirmEmailSent] = useState(false);
 
   const {
     isSubmitting,
@@ -25,16 +25,37 @@ export default function Login() {
     sendPasswordReset,
   } = useAuth();
 
+  const switchMode = (next) => {
+    setMode(next);
+    setResetSent(false);
+    setConfirmEmailSent(false);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (mode === 'forgot') {
-      const ok = await sendPasswordReset(email);
+      const { ok } = await sendPasswordReset(email);
       if (ok) setResetSent(true);
       return;
     }
 
-    const ok = mode === 'signin' ? await signInWithPassword(email, password) : await signUpWithPassword(email, password);
+    if (mode === 'signup') {
+      const { ok, data } = await signUpWithPassword(email, password);
+      if (!ok) return;
+      if (data?.session) {
+        // Email confirmation is off on this project — user is logged in immediately.
+        navigate('/onboarding');
+      } else {
+        // Email confirmation is required — account exists, but there's no
+        // session until they click the link. Don't navigate; ProtectedRoute
+        // would just bounce them straight back here.
+        setConfirmEmailSent(true);
+      }
+      return;
+    }
+
+    const { ok } = await signInWithPassword(email, password);
     if (ok) navigate('/home');
   };
 
@@ -43,7 +64,7 @@ export default function Login() {
   };
 
   const handleGuest = async () => {
-    const ok = await signInAsGuest();
+    const { ok } = await signInAsGuest();
     if (ok) navigate('/onboarding');
   };
 
@@ -60,6 +81,10 @@ export default function Login() {
           {mode === 'forgot' && resetSent ? (
             <p className="text-sm text-ink-muted text-center py-2">
               Check your email for a password reset link.
+            </p>
+          ) : mode === 'signup' && confirmEmailSent ? (
+            <p className="text-sm text-ink-muted text-center py-2">
+              Account created — check your email to confirm it, then sign in.
             </p>
           ) : (
             <form onSubmit={handleSubmit} className="flex flex-col gap-3">
@@ -111,17 +136,17 @@ export default function Login() {
 
           <div className="flex justify-center gap-4 mt-5 text-xs text-ink-faint">
             {mode !== 'signin' && (
-              <button type="button" onClick={() => setMode('signin')} className="hover:text-ink-muted">
+              <button type="button" onClick={() => switchMode('signin')} className="hover:text-ink-muted">
                 Sign in
               </button>
             )}
             {mode !== 'signup' && (
-              <button type="button" onClick={() => setMode('signup')} className="hover:text-ink-muted">
+              <button type="button" onClick={() => switchMode('signup')} className="hover:text-ink-muted">
                 Create account
               </button>
             )}
             {mode !== 'forgot' && (
-              <button type="button" onClick={() => setMode('forgot')} className="hover:text-ink-muted">
+              <button type="button" onClick={() => switchMode('forgot')} className="hover:text-ink-muted">
                 Forgot password?
               </button>
             )}

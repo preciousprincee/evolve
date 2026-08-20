@@ -7,10 +7,6 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      devOptions: {
-        enabled: true,
-        type: 'module',
-      },
       includeAssets: ['favicon-32.png', 'apple-touch-icon.png'],
       manifest: {
         name: 'Evolve — The AI Companion That Grows With You',
@@ -30,7 +26,7 @@ export default defineConfig({
       workbox: {
         // App shell + static assets cached for offline install.
         globPatterns: ['**/*.{js,css,html,png,svg,woff2}'],
-        navigateFallback: '/index.html',
+        navigateFallback: '/offline.html',
         navigateFallbackDenylist: [/^\/api/],
         runtimeCaching: [
           {

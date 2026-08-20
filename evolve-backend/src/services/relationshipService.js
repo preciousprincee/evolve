@@ -1,5 +1,7 @@
 import { supabaseAdmin } from '../db/supabaseAdmin.js';
 import { logger } from '../utils/logger.js';
+import { invalidate } from '../utils/cache.js';
+import { profileCacheKey } from './profileService.js';
 
 // XP required (cumulative) to REACH each level.
 const LEVEL_THRESHOLDS = [
@@ -70,6 +72,8 @@ export async function recordInteraction(userId) {
   if (updateErr) {
     logger.error({ event: 'relationship_update_failed', userId }, 'Failed to update relationship_progress');
   }
+
+  await invalidate(profileCacheKey(userId));
 
   return { xp: newXp, level: newLevel, leveledUp: newLevel !== progress.level };
 }

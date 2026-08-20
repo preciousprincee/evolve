@@ -1,8 +1,27 @@
-import { BACKEND_URL, getAuthHeader, ApiError, apiFetch } from '../services/apiClient.js';
+import { BACKEND_URL, getAuthHeader, ApiError } from '../services/apiClient.js';
 
-export const chatApi = {
-  getHistory: () => apiFetch('/api/chat/history'),
-};
+/**
+ * Loads recent chat history so the conversation survives a page refresh
+ * instead of starting empty every time.
+ */
+export async function fetchChatHistory({ limit = 50, before } = {}) {
+  const params = new URLSearchParams({ limit, ...(before ? { before } : {}) });
+  const res = await fetch(`${BACKEND_URL}/api/chat/history?${params.toString()}`, {
+    headers: { Authorization: await getAuthHeader() },
+  });
+
+  if (!res.ok) {
+    let payload;
+    try {
+      payload = await res.json();
+    } catch {
+      payload = {};
+    }
+    throw new ApiError(res.status, payload?.error?.code || 'UNKNOWN', payload?.error?.message || 'Failed to load chat history.');
+  }
+
+  return res.json(); // { messages, hasMore }
+}
 
 /**
  * Streams a chat response. We use fetch + a manual SSE line parser rather

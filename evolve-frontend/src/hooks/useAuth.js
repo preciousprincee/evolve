@@ -9,14 +9,14 @@ export function useAuth() {
     setIsSubmitting(true);
     setError(null);
     try {
-      const { error: authError } = await fn();
+      const { data, error: authError } = await fn();
       if (authError) throw authError;
-      return true;
+      return { ok: true, data };
     } catch (err) {
       // Supabase error messages are already safe/user-facing (they don't
       // leak internals), so it's fine to surface err.message directly here.
       setError(err.message || 'Something went wrong. Please try again.');
-      return false;
+      return { ok: false, data: null };
     } finally {
       setIsSubmitting(false);
     }

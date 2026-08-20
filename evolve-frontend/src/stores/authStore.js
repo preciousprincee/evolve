@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { supabase } from '../services/supabaseClient.js';
+import { useProfileStore } from './profileStore.js';
 
 export const useAuthStore = create((set) => ({
   session: null,
@@ -28,5 +29,6 @@ export const useAuthStore = create((set) => ({
   signOut: async () => {
     await supabase.auth.signOut();
     set({ session: null, user: null, isGuest: false });
+    useProfileStore.getState().clear();
   },
 }));
