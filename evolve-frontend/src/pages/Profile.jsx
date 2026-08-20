@@ -21,6 +21,7 @@ export default function Profile() {
   const [isSaving, setIsSaving] = useState(false);
   const [romanticSaving, setRomanticSaving] = useState(false);
   const [romanticError, setRomanticError] = useState('');
+  const [saveError, setSaveError] = useState('');
 
   const load = async () => {
     const [profileRes, achievementsRes] = await Promise.all([
@@ -47,18 +48,24 @@ export default function Profile() {
 
   const save = async () => {
     setIsSaving(true);
+    setSaveError('');
     try {
       await profileApi.updateMe({
         nickname: form.nickname || undefined,
         age: form.age || undefined,
         gender: form.gender || undefined,
         career: form.career || undefined,
-        companion_style: form.companion_style,
-        love_language: form.love_language,
+        companion_style: form.companion_style || undefined,
+        love_language: form.love_language || undefined,
         current_mood: form.current_mood || undefined,
       });
       await reloadAfterWrite();
       setEditing(false);
+    } catch (err) {
+      // Previously unhandled — a validation failure (e.g. an empty select
+      // field) would silently no-op here, so a field like age could look
+      // "saved" in the UI while nothing actually reached the server.
+      setSaveError(err?.message || 'Could not save changes. Please try again.');
     } finally {
       setIsSaving(false);
     }
@@ -97,7 +104,42 @@ export default function Profile() {
     }
   };
 
-  if (!data) return null;
+  if (!data) {
+    // Previously this returned null: a totally blank screen with none of
+    // the page's padding/cards, followed by the entire padded layout
+    // (outer pb-32/px-5/pt-8 + every GlassCard's p-5) popping in at once
+    // the instant the profile GET resolves. That sudden jump from "no
+    // padding at all" to "the full stack of card padding" is what reads
+    // as excess margin/padding appearing on load. Rendering the same
+    // shell with skeleton placeholders keeps the spacing constant so
+    // nothing shifts when the real content arrives.
+    return (
+      <div className="min-h-screen pb-32 px-5 pt-8">
+        <div className="flex flex-col gap-4 animate-pulse">
+          <div className="flex flex-col items-center gap-3 mb-2">
+            <div className="w-[88px] h-[88px] rounded-full bg-white/10" />
+            <div className="w-32 h-5 rounded bg-white/10" />
+          </div>
+          <div className="glass-panel-solid p-5">
+            <div className="w-24 h-4 rounded bg-white/10 mb-4" />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="h-10 rounded bg-white/10" />
+              <div className="h-10 rounded bg-white/10" />
+            </div>
+          </div>
+          <div className="glass-panel p-5">
+            <div className="w-20 h-4 rounded bg-white/10 mb-3" />
+            <div className="flex flex-col gap-2">
+              <div className="h-3 rounded bg-white/10 w-3/4" />
+              <div className="h-3 rounded bg-white/10 w-1/2" />
+              <div className="h-3 rounded bg-white/10 w-2/3" />
+            </div>
+          </div>
+          <div className="glass-panel p-5 h-20" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen pb-32 px-5 pt-8">
@@ -151,12 +193,15 @@ export default function Profile() {
                 </select>
                 <input className="input-field" placeholder="Career" value={form.career || ''} onChange={(e) => setForm({ ...form, career: e.target.value })} />
                 <select className="input-field" value={form.companion_style || ''} onChange={(e) => setForm({ ...form, companion_style: e.target.value })}>
+                  <option value="">Companion style — not set</option>
                   {COMPANION_STYLES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
                 </select>
                 <select className="input-field" value={form.love_language || ''} onChange={(e) => setForm({ ...form, love_language: e.target.value })}>
+                  <option value="">Love language — not set</option>
                   {LOVE_LANGUAGES.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}
                 </select>
                 <input className="input-field" placeholder="Current mood" value={form.current_mood || ''} onChange={(e) => setForm({ ...form, current_mood: e.target.value })} />
+                {saveError && <p className="text-xs text-aurora-rose px-1">{saveError}</p>}
                 <Button onClick={save} disabled={isSaving} className="mt-1">{isSaving ? 'Saving…' : 'Save'}</Button>
               </div>
             )}
