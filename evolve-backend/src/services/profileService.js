@@ -1,6 +1,7 @@
 import { supabaseAdmin } from '../db/supabaseAdmin.js';
 import { AppError } from '../utils/AppError.js';
 import { getOrSet, invalidate } from '../utils/cache.js';
+import { logger } from '../utils/logger.js';
 
 // IMPORTANT: supabaseAdmin uses the service-role key and bypasses RLS.
 // Every query here MUST explicitly filter by the verified userId passed in
@@ -19,6 +20,16 @@ export async function getFullProfile(userId) {
       ]);
 
     if (profileErr || relErr || creditsErr) {
+      logger.error(
+        {
+          event: 'profile_fetch_failed',
+          userId,
+          profileError: profileErr ? { code: profileErr.code, message: profileErr.message } : null,
+          relationshipError: relErr ? { code: relErr.code, message: relErr.message } : null,
+          creditsError: creditsErr ? { code: creditsErr.code, message: creditsErr.message } : null,
+        },
+        'Supabase profile fetch failed'
+      );
       throw new AppError(404, 'Profile not found.', 'PROFILE_NOT_FOUND');
     }
 
@@ -51,6 +62,21 @@ export async function updateProfile(userId, updates) {
     .single();
 
   if (error) {
+    // The client only ever sees the generic AppError below — this is the
+    // one place the real cause (missing column, check-constraint
+    // violation, etc.) gets recorded, so it needs to actually happen.
+    logger.error(
+      {
+        event: 'profile_update_failed',
+        userId,
+        supabaseCode: error.code,
+        supabaseMessage: error.message,
+        supabaseDetails: error.details,
+        supabaseHint: error.hint,
+        attemptedFields: Object.keys(updates),
+      },
+      'Supabase profile update failed'
+    );
     throw new AppError(500, 'Failed to update profile.', 'PROFILE_UPDATE_FAILED');
   }
 
