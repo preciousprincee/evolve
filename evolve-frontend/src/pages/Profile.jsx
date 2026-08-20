@@ -9,7 +9,7 @@ import { profileApi } from '../api/profileApi.js';
 import { memoryApi } from '../api/memoryApi.js';
 import { useAuthStore } from '../stores/authStore.js';
 import { useProfileStore } from '../stores/profileStore.js';
-import { COMPANION_STYLES, LOVE_LANGUAGES } from '../constants/relationship.js';
+import { COMPANION_STYLES, LOVE_LANGUAGES, GENDER_OPTIONS } from '../constants/relationship.js';
 import { fadeUp, staggerChildren } from '../animations/variants.js';
 
 export default function Profile() {
@@ -51,6 +51,7 @@ export default function Profile() {
       await profileApi.updateMe({
         nickname: form.nickname || undefined,
         age: form.age || undefined,
+        gender: form.gender || undefined,
         career: form.career || undefined,
         companion_style: form.companion_style,
         love_language: form.love_language,
@@ -134,6 +135,7 @@ export default function Profile() {
             {!editing ? (
               <div className="flex flex-col gap-2 text-sm text-ink-muted">
                 <p><span className="text-ink-faint">Age:</span> {data.profile.age ?? '—'}</p>
+                <p><span className="text-ink-faint">Gender:</span> {GENDER_OPTIONS.find((g) => g.value === data.profile.gender)?.label || '—'}</p>
                 <p><span className="text-ink-faint">Career:</span> {data.profile.career || '—'}</p>
                 <p><span className="text-ink-faint">Companion style:</span> {COMPANION_STYLES.find((s) => s.value === data.profile.companion_style)?.label || '—'}</p>
                 <p><span className="text-ink-faint">Love language:</span> {LOVE_LANGUAGES.find((l) => l.value === data.profile.love_language)?.label || '—'}</p>
@@ -143,6 +145,10 @@ export default function Profile() {
               <div className="flex flex-col gap-2">
                 <input className="input-field" placeholder="Nickname" value={form.nickname || ''} onChange={(e) => setForm({ ...form, nickname: e.target.value })} />
                 <input className="input-field" type="number" min="13" max="120" placeholder="Age" value={form.age ?? ''} onChange={(e) => setForm({ ...form, age: e.target.value ? Number(e.target.value) : undefined })} />
+                <select className="input-field" value={form.gender || ''} onChange={(e) => setForm({ ...form, gender: e.target.value })}>
+                  <option value="">Gender — not set</option>
+                  {GENDER_OPTIONS.map((g) => <option key={g.value} value={g.value}>{g.label}</option>)}
+                </select>
                 <input className="input-field" placeholder="Career" value={form.career || ''} onChange={(e) => setForm({ ...form, career: e.target.value })} />
                 <select className="input-field" value={form.companion_style || ''} onChange={(e) => setForm({ ...form, companion_style: e.target.value })}>
                   {COMPANION_STYLES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}

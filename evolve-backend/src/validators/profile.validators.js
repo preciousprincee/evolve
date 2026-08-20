@@ -8,6 +8,7 @@ export const updateProfileSchema = z
     name: z.string().trim().min(1).max(50).optional(),
     nickname: z.string().trim().min(1).max(50).optional(),
     age: z.number().int().min(13).max(120).optional(),
+    gender: z.enum(['male', 'female']).optional(),
     career: z.string().trim().max(120).optional(),
     goals: z.array(z.string().trim().min(1).max(100)).max(20).optional(),
     hobbies: z.array(z.string().trim().min(1).max(100)).max(20).optional(),

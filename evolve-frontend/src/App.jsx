@@ -15,6 +15,7 @@ import Login from './pages/Login.jsx';
 const Onboarding = lazy(() => import('./pages/Onboarding.jsx'));
 const Home = lazy(() => import('./pages/Home.jsx'));
 const Chat = lazy(() => import('./pages/Chat.jsx'));
+const Call = lazy(() => import('./pages/Call.jsx'));
 const Profile = lazy(() => import('./pages/Profile.jsx'));
 const Timeline = lazy(() => import('./pages/Timeline.jsx'));
 const AdminUsers = lazy(() => import('./pages/AdminUsers.jsx'));
@@ -42,6 +43,7 @@ export default function App() {
 
           <Route element={<ProtectedRoute />}>
             <Route path="/onboarding" element={<Onboarding />} />
+            <Route path="/call" element={<Call />} />
 
             <Route element={<AppShell />}>
               <Route path="/home" element={<Home />} />

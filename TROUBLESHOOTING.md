@@ -44,3 +44,13 @@ C:\Users\DELL\Desktop\evolve-mvp\evolve-backend\node_modules\pino\lib\transport.
 select column_name from information_schema.columns 
 where table_name = 'profiles' and column_name in ('romantic_mode_enabled', 'role');
 ```
+
+---
+
+### New in this update — things to do before testing
+
+**Run migration `005_gender.sql`** in the Supabase SQL Editor (after 001–004) — onboarding now collects gender and the profile update endpoint will 400 with a Postgres check-constraint error until the column exists.
+
+**Call Mode requires HTTPS (or localhost)** — `SpeechRecognition`/`getUserMedia` are blocked on plain HTTP in every browser that supports them. `localhost` during `npm run dev` is fine; a deployed preview needs to be served over HTTPS.
+
+**Voice selection is best-effort** — the male/female voice picker (`useVoice.js`) matches against known voice names (Samantha, Zira, Daniel, David, etc.). If a browser/OS only ships one English voice, both genders will sound the same — there's no true gender metadata in the Web Speech API to fall back on.

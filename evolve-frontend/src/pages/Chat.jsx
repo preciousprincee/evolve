@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import { MessageBubble } from '../components/MessageBubble.jsx';
 import { DateSeparator } from '../components/DateSeparator.jsx';
@@ -8,14 +9,17 @@ import { useChat } from '../hooks/useChat.js';
 import { useProfileStore } from '../stores/profileStore.js';
 import { fetchChatHistory } from '../api/chatApi.js';
 import { useVoice } from '../hooks/useVoice.js';
+import { opposingVoiceGender } from '../constants/relationship.js';
 
 const AUTO_SPEAK_KEY = 'evolve-auto-speak';
 
 export default function Chat() {
+  const navigate = useNavigate();
   const { messages, isSending, error, setMessages } = useChatStore();
   const { sendMessage } = useChat();
   const [input, setInput] = useState('');
   const [romantic, setRomantic] = useState(false);
+  const [voiceGender, setVoiceGender] = useState(null);
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const [autoSpeak, setAutoSpeak] = useState(() => localStorage.getItem(AUTO_SPEAK_KEY) === 'true');
   const scrollRef = useRef(null);
@@ -60,6 +64,7 @@ export default function Chat() {
     // without a second independent fetch here.
     useProfileStore.getState().fetch().then((res) => {
       setRomantic(Boolean(res?.profile?.romantic_mode_enabled));
+      setVoiceGender(opposingVoiceGender(res?.profile?.gender));
     }).catch(() => {});
   }, []);
 
@@ -74,8 +79,8 @@ export default function Chat() {
     if (!last || last.role !== 'assistant' || last.isStreaming) return;
     if (lastSpokenIdRef.current === last.id) return;
     lastSpokenIdRef.current = last.id;
-    speak(last.content, { romantic });
-  }, [messages, autoSpeak, speechSynthesisSupported, romantic, speak]);
+    speak(last.content, { romantic, voiceGender });
+  }, [messages, autoSpeak, speechSynthesisSupported, romantic, voiceGender, speak]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -111,30 +116,46 @@ export default function Chat() {
           </h1>
           <p className="text-xs text-ink-faint mt-0.5">{isSending ? 'thinking…' : 'here with you'}</p>
         </div>
-        {speechSynthesisSupported && (
-          <button
-            type="button"
-            onClick={() => setAutoSpeak((v) => !v)}
-            aria-label={autoSpeak ? 'Turn off spoken replies' : 'Turn on spoken replies'}
-            aria-pressed={autoSpeak}
-            className={`ml-auto w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-colors ${
-              autoSpeak ? (romantic ? 'bg-aurora-rose/20 text-aurora-rose' : 'bg-aurora-violet/20 text-aurora-violet') : 'text-ink-faint'
-            }`}
-          >
-            {autoSpeak ? (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M11 5 6 9H3v6h3l5 4V5Z" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M15.5 8.5a5 5 0 0 1 0 7" strokeLinecap="round" />
-                <path d="M18 6a9 9 0 0 1 0 12" strokeLinecap="round" />
+        <div className="ml-auto flex items-center gap-2 shrink-0">
+          {speechRecognitionSupported && speechSynthesisSupported && (
+            <button
+              type="button"
+              onClick={() => navigate('/call')}
+              aria-label="Start a call"
+              className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-colors ${
+                romantic ? 'bg-aurora-rose/20 text-aurora-rose' : 'bg-aurora-violet/20 text-aurora-violet'
+              }`}
+            >
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92Z" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
-            ) : (
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M11 5 6 9H3v6h3l5 4V5Z" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="m17 9 4 6M21 9l-4 6" strokeLinecap="round" />
-              </svg>
-            )}
-          </button>
-        )}
+            </button>
+          )}
+          {speechSynthesisSupported && (
+            <button
+              type="button"
+              onClick={() => setAutoSpeak((v) => !v)}
+              aria-label={autoSpeak ? 'Turn off spoken replies' : 'Turn on spoken replies'}
+              aria-pressed={autoSpeak}
+              className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-colors ${
+                autoSpeak ? (romantic ? 'bg-aurora-rose/20 text-aurora-rose' : 'bg-aurora-violet/20 text-aurora-violet') : 'text-ink-faint'
+              }`}
+            >
+              {autoSpeak ? (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M11 5 6 9H3v6h3l5 4V5Z" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="M15.5 8.5a5 5 0 0 1 0 7" strokeLinecap="round" />
+                  <path d="M18 6a9 9 0 0 1 0 12" strokeLinecap="round" />
+                </svg>
+              ) : (
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M11 5 6 9H3v6h3l5 4V5Z" strokeLinecap="round" strokeLinejoin="round" />
+                  <path d="m17 9 4 6M21 9l-4 6" strokeLinecap="round" />
+                </svg>
+              )}
+            </button>
+          )}
+        </div>
       </header>
 
       <div className="flex-1 overflow-y-auto px-4 flex flex-col gap-2">

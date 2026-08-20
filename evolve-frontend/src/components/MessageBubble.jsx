@@ -1,8 +1,17 @@
+import { memo } from 'react';
 import { motion } from 'framer-motion';
 import ReactMarkdown from 'react-markdown';
 import { messageBubbleIn } from '../animations/variants.js';
 
-export function MessageBubble({ role, content, isStreaming, romantic = false }) {
+// Memoized: chatStore.appendToken() rebuilds the whole `messages` array on
+// every single streamed token, but only replaces the one message object
+// actually being streamed into — every other message object keeps its old
+// reference. Without memo, React still re-renders every bubble (re-running
+// ReactMarkdown and framer-motion) on every token because the parent
+// re-rendered, and that cost grows with conversation length — this is what
+// made the chat feel sluggish once a conversation had a lot of messages.
+// With memo, a bubble only re-renders when its own props actually change.
+export const MessageBubble = memo(function MessageBubble({ role, content, isStreaming, romantic = false }) {
   const isUser = role === 'user';
 
   return (
@@ -32,4 +41,4 @@ export function MessageBubble({ role, content, isStreaming, romantic = false }) 
       </div>
     </motion.div>
   );
-}
+});

@@ -35,6 +35,19 @@ export const LOVE_LANGUAGES = [
   { value: 'physical_touch', label: 'Physical Touch' },
 ];
 
+export const GENDER_OPTIONS = [
+  { value: 'male', label: 'Male' },
+  { value: 'female', label: 'Female' },
+];
+
+// The AI's speaking voice is always the opposite of the user's selected
+// gender (male user -> female voice, female user -> male voice).
+export function opposingVoiceGender(userGender) {
+  if (userGender === 'male') return 'female';
+  if (userGender === 'female') return 'male';
+  return null; // unknown — voice picker falls back to a sane default
+}
+
 export const MEMORY_CATEGORIES = [
   'goal', 'dream', 'song', 'movie', 'book', 'birthday', 'friend', 'family',
   'achievement', 'fear', 'habit', 'career', 'study_progress',

@@ -9,7 +9,11 @@ export function useChat() {
   const abortRef = useRef(null);
 
   const sendMessage = useCallback(
-    async (text) => {
+    // onComplete(fullText) fires once the reply has fully streamed in —
+    // used by Call mode, which needs the complete sentence before it can
+    // speak it aloud (speech synthesis can't meaningfully read a reply
+    // token-by-token the way the chat bubble can display it).
+    async (text, { onComplete } = {}) => {
       const trimmed = text.trim();
       if (!trimmed) return;
 
@@ -19,9 +23,10 @@ export function useChat() {
       setSending(true);
 
       abortRef.current = new AbortController();
+      let fullText = '';
 
       try {
-        await streamChatMessage(trimmed, {
+        fullText = await streamChatMessage(trimmed, {
           signal: abortRef.current.signal,
           onToken: (token) => appendToken(assistantId, token),
         });
@@ -34,6 +39,7 @@ export function useChat() {
       } finally {
         finishAssistantMessage(assistantId);
         setSending(false);
+        onComplete?.(fullText);
       }
     },
     [appendUserMessage, beginAssistantMessage, appendToken, finishAssistantMessage, setSending, setError]
