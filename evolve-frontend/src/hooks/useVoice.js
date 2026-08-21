@@ -25,9 +25,17 @@ function pickVoiceForGender(gender) {
   const match = voices.find((v) => hints.some((h) => v.name.toLowerCase().includes(h)));
   if (match) return match;
 
-  // No confident name match — fall back to a default English voice rather
-  // than picking the wrong gender at random.
-  return voices.find((v) => v.default) || voices[0];
+  // No confident name match for THIS gender. Falling straight back to
+  // voices.find(v => v.default) here is what caused male and female to
+  // sound identical: on Chrome, the sole available voice is usually named
+  // "Google US English" — which only appears in FEMALE_VOICE_HINTS above —
+  // so a male request would silently fall through to that same default
+  // voice. Prefer any voice NOT already claimed by the other gender's
+  // hints, so male/female differ whenever there's more than one voice at
+  // all, even without a confident name match.
+  const otherHints = gender === 'female' ? MALE_VOICE_HINTS : FEMALE_VOICE_HINTS;
+  const unclaimed = voices.find((v) => !otherHints.some((h) => v.name.toLowerCase().includes(h)));
+  return unclaimed || voices.find((v) => v.default) || voices[0];
 }
 
 /**
@@ -138,8 +146,16 @@ export function useVoice() {
 
       window.speechSynthesis.cancel(); // don't overlap with a previous reply
       const utterance = new SpeechSynthesisUtterance(text);
+      // A gender-appropriate pitch baseline, applied regardless of whether
+      // a distinctly-named voice was found. Web Speech only exposes
+      // rate/pitch/volume on the utterance — no way to synthesize a
+      // different timbre — but shifting pitch is enough to make male vs.
+      // female audibly different even when pickVoiceForGender had to fall
+      // back to the same underlying voice for both (e.g. a machine with
+      // only one English voice installed, like plain "Google US English").
+      const basePitch = voiceGender === 'male' ? 0.82 : voiceGender === 'female' ? 1.08 : 1;
       utterance.rate = romantic ? 0.92 : 1;
-      utterance.pitch = romantic ? 1.08 : 1;
+      utterance.pitch = Math.min(2, Math.max(0, basePitch * (romantic ? 1.05 : 1)));
       utterance.volume = 1;
       const voice = pickVoiceForGender(voiceGender);
       if (voice) utterance.voice = voice;

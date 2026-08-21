@@ -28,6 +28,14 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,png,svg,woff2}'],
         navigateFallback: '/offline.html',
         navigateFallbackDenylist: [/^\/api/],
+        // Without these two, a redeploy leaves any already-open tab still
+        // controlled by the OLD service worker (clientsClaim) and its
+        // stale precache manifest never gets purged (cleanupOutdatedCaches)
+        // — that combo is what was showing the offline fallback on a real,
+        // connected network: the old worker was misfiring against a build
+        // that no longer matches what's deployed.
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
         runtimeCaching: [
           {
             // Never cache API calls — chat/credits/memories must always be fresh.
