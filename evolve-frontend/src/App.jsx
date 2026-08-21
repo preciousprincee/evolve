@@ -5,6 +5,7 @@ import { ProtectedRoute } from './components/ProtectedRoute.jsx';
 import { AdminRoute } from './components/AdminRoute.jsx';
 import { AppShell } from './components/AppShell.jsx';
 import { AuroraOrb } from './components/AuroraOrb.jsx';
+import { OfflineScreen } from './components/OfflineScreen.jsx';
 import Login from './pages/Login.jsx';
 
 // Code-split everything past the login screen — a fresh visitor only ever
@@ -36,30 +37,32 @@ export default function App() {
   }, [init]);
 
   return (
-    <BrowserRouter>
-      <Suspense fallback={<RouteFallback />}>
-        <Routes>
-          <Route path="/login" element={<Login />} />
+    <OfflineScreen>
+      <BrowserRouter>
+        <Suspense fallback={<RouteFallback />}>
+          <Routes>
+            <Route path="/login" element={<Login />} />
 
-          <Route element={<ProtectedRoute />}>
-            <Route path="/onboarding" element={<Onboarding />} />
-            <Route path="/call" element={<Call />} />
+            <Route element={<ProtectedRoute />}>
+              <Route path="/onboarding" element={<Onboarding />} />
+              <Route path="/call" element={<Call />} />
 
-            <Route element={<AppShell />}>
-              <Route path="/home" element={<Home />} />
-              <Route path="/chat" element={<Chat />} />
-              <Route path="/timeline" element={<Timeline />} />
-              <Route path="/profile" element={<Profile />} />
+              <Route element={<AppShell />}>
+                <Route path="/home" element={<Home />} />
+                <Route path="/chat" element={<Chat />} />
+                <Route path="/timeline" element={<Timeline />} />
+                <Route path="/profile" element={<Profile />} />
 
-              <Route element={<AdminRoute />}>
-                <Route path="/admin/users" element={<AdminUsers />} />
+                <Route element={<AdminRoute />}>
+                  <Route path="/admin/users" element={<AdminUsers />} />
+                </Route>
               </Route>
             </Route>
-          </Route>
 
-          <Route path="*" element={<Navigate to="/home" replace />} />
-        </Routes>
-      </Suspense>
-    </BrowserRouter>
+            <Route path="*" element={<Navigate to="/home" replace />} />
+          </Routes>
+        </Suspense>
+      </BrowserRouter>
+    </OfflineScreen>
   );
 }

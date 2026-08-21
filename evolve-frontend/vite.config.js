@@ -26,14 +26,13 @@ export default defineConfig({
       workbox: {
         // App shell + static assets cached for offline install.
         globPatterns: ['**/*.{js,css,html,png,svg,woff2}'],
-        navigateFallback: '/offline.html',
-        navigateFallbackDenylist: [/^\/api/],
-        // Without these two, a redeploy leaves any already-open tab still
-        // controlled by the OLD service worker (clientsClaim) and its
-        // stale precache manifest never gets purged (cleanupOutdatedCaches)
-        // — that combo is what was showing the offline fallback on a real,
-        // connected network: the old worker was misfiring against a build
-        // that no longer matches what's deployed.
+        // navigateFallback isn't "serve this when offline" — Workbox serves
+        // it for EVERY navigation once this service worker controls the
+        // page, network available or not. It belongs on the real app shell
+        // (so client-side routes still resolve when truly offline); actual
+        // offline detection now happens in React via OfflineScreen.jsx.
+        navigateFallback: '/index.html',
+        navigateFallbackDenylist: [/^\/api/, /^\/offline\.html$/],
         clientsClaim: true,
         cleanupOutdatedCaches: true,
         runtimeCaching: [
